@@ -7,6 +7,7 @@ import LoginPage from './pages/LoginPage'
 import ContactsPage from './pages/ContactsPage'
 import DashboardPage from './pages/DashboardPage'
 import MembersPage from './pages/MembersPage'
+import PublicRegisterPage from './pages/PublicRegisterPage'
 
 function NotFound() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/registrar" element={<PublicRegisterPage />} />
 
           <Route element={<ProtectedRoute />}>
             <Route element={<AppLayout />}>

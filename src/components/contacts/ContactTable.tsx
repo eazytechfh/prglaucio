@@ -78,7 +78,16 @@ export default function ContactTable({
               <td className="px-4 py-3 text-sm text-slate-600">{c.igreja}</td>
               {showOwner && (
                 <td className="px-4 py-3 text-sm text-slate-600">
-                  {c.profiles?.name ?? '—'}
+                  {c.created_by === null ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                      </svg>
+                      Auto-cadastro
+                    </span>
+                  ) : (
+                    c.profiles?.name ?? '—'
+                  )}
                 </td>
               )}
               <td className="px-4 py-3 text-sm text-slate-500">
