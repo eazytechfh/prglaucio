@@ -1,21 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 
-function formatPhone(value: string) {
-  const digits = value.replace(/\D/g, '').slice(0, 11)
-  if (digits.length <= 2) return digits
-  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
-  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
-}
-
 type Status = 'idle' | 'loading' | 'success' | 'error'
 
 export default function PublicRegisterPage() {
   const [nome, setNome] = useState('')
-  const [telefone, setTelefone] = useState('')
-  const [bairro, setBairro] = useState('')
-  const [igreja, setIgreja] = useState('')
+  const [email, setEmail] = useState('')
+  const [senha, setSenha] = useState('')
+  const [confirmar, setConfirmar] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [status, setStatus] = useState<Status>('idle')
   const [errorMsg, setErrorMsg] = useState('')
@@ -23,10 +15,9 @@ export default function PublicRegisterPage() {
   const validate = () => {
     const e: Record<string, string> = {}
     if (!nome.trim()) e.nome = 'Informe seu nome completo'
-    if (!telefone.trim() || telefone.replace(/\D/g, '').length < 10)
-      e.telefone = 'Informe um telefone válido com DDD'
-    if (!bairro.trim()) e.bairro = 'Informe seu bairro'
-    if (!igreja.trim()) e.igreja = 'Informe sua igreja'
+    if (!email.trim() || !email.includes('@')) e.email = 'Informe um e-mail válido'
+    if (senha.length < 6) e.senha = 'A senha deve ter pelo menos 6 caracteres'
+    if (senha !== confirmar) e.confirmar = 'As senhas não coincidem'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -38,36 +29,25 @@ export default function PublicRegisterPage() {
     setStatus('loading')
     setErrorMsg('')
 
-    const { data, error } = await supabase.rpc('registrar_contato_publico', {
-      p_nome: nome.trim(),
-      p_telefone: telefone,
-      p_bairro: bairro.trim(),
-      p_igreja: igreja.trim(),
+    const { error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password: senha,
+      options: {
+        data: { name: nome.trim(), role: 'member' },
+      },
     })
 
     if (error) {
-      setErrorMsg(error.message)
-      setStatus('error')
-      return
-    }
-
-    if (data?.error) {
-      setErrorMsg(data.error)
+      setErrorMsg(
+        error.message === 'User already registered'
+          ? 'Este e-mail já possui uma conta cadastrada.'
+          : error.message
+      )
       setStatus('error')
       return
     }
 
     setStatus('success')
-  }
-
-  const handleReset = () => {
-    setNome('')
-    setTelefone('')
-    setBairro('')
-    setIgreja('')
-    setErrors({})
-    setStatus('idle')
-    setErrorMsg('')
   }
 
   if (status === 'success') {
@@ -82,14 +62,17 @@ export default function PublicRegisterPage() {
             </div>
             <h2 className="text-xl font-bold text-slate-900">Cadastro realizado!</h2>
             <p className="mt-2 text-sm text-slate-500">
-              Obrigado, <strong>{nome}</strong>! Seu cadastro foi registrado com sucesso.
+              Bem-vindo(a), <strong>{nome}</strong>!
             </p>
-            <button
-              onClick={handleReset}
-              className="mt-6 w-full rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-700 transition-colors"
+            <div className="mt-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+              Verifique seu e-mail <strong>{email}</strong> e confirme sua conta para conseguir acessar o sistema.
+            </div>
+            <a
+              href="/login"
+              className="mt-5 block w-full rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-700 transition-colors text-center"
             >
-              Fazer outro cadastro
-            </button>
+              Ir para o Login
+            </a>
           </div>
         </div>
       </div>
@@ -105,10 +88,10 @@ export default function PublicRegisterPage() {
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 shadow-lg">
             <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-white">Faça seu Cadastro</h1>
+          <h1 className="text-2xl font-bold text-white">Criar Conta</h1>
           <p className="mt-2 text-sm text-primary-200">
             Pr. Glaucio Goulart — Sistema de Cadastros
           </p>
@@ -123,7 +106,7 @@ export default function PublicRegisterPage() {
               <label className="text-sm font-medium text-slate-700">Nome completo *</label>
               <input
                 type="text"
-                placeholder="Ex: João da Silva"
+                placeholder="Ex: Maria Oliveira"
                 value={nome}
                 onChange={(e) => { setNome(e.target.value); setErrors((p) => ({ ...p, nome: '' })) }}
                 className={`block w-full rounded-lg border px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${errors.nome ? 'border-red-400' : 'border-slate-300'}`}
@@ -131,43 +114,43 @@ export default function PublicRegisterPage() {
               {errors.nome && <p className="text-xs text-red-600">{errors.nome}</p>}
             </div>
 
-            {/* Telefone */}
+            {/* Email */}
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-slate-700">Telefone / WhatsApp *</label>
+              <label className="text-sm font-medium text-slate-700">E-mail *</label>
               <input
-                type="tel"
-                placeholder="(00) 00000-0000"
-                value={telefone}
-                onChange={(e) => { setTelefone(formatPhone(e.target.value)); setErrors((p) => ({ ...p, telefone: '' })) }}
-                className={`block w-full rounded-lg border px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${errors.telefone ? 'border-red-400' : 'border-slate-300'}`}
+                type="email"
+                placeholder="seu@email.com"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: '' })) }}
+                className={`block w-full rounded-lg border px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${errors.email ? 'border-red-400' : 'border-slate-300'}`}
               />
-              {errors.telefone && <p className="text-xs text-red-600">{errors.telefone}</p>}
+              {errors.email && <p className="text-xs text-red-600">{errors.email}</p>}
             </div>
 
-            {/* Bairro */}
+            {/* Senha */}
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-slate-700">Bairro *</label>
+              <label className="text-sm font-medium text-slate-700">Senha *</label>
               <input
-                type="text"
-                placeholder="Ex: Centro"
-                value={bairro}
-                onChange={(e) => { setBairro(e.target.value); setErrors((p) => ({ ...p, bairro: '' })) }}
-                className={`block w-full rounded-lg border px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${errors.bairro ? 'border-red-400' : 'border-slate-300'}`}
+                type="password"
+                placeholder="Mínimo 6 caracteres"
+                value={senha}
+                onChange={(e) => { setSenha(e.target.value); setErrors((p) => ({ ...p, senha: '' })) }}
+                className={`block w-full rounded-lg border px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${errors.senha ? 'border-red-400' : 'border-slate-300'}`}
               />
-              {errors.bairro && <p className="text-xs text-red-600">{errors.bairro}</p>}
+              {errors.senha && <p className="text-xs text-red-600">{errors.senha}</p>}
             </div>
 
-            {/* Igreja */}
+            {/* Confirmar senha */}
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-slate-700">Igreja *</label>
+              <label className="text-sm font-medium text-slate-700">Confirmar senha *</label>
               <input
-                type="text"
-                placeholder="Ex: Assembleia de Deus"
-                value={igreja}
-                onChange={(e) => { setIgreja(e.target.value); setErrors((p) => ({ ...p, igreja: '' })) }}
-                className={`block w-full rounded-lg border px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${errors.igreja ? 'border-red-400' : 'border-slate-300'}`}
+                type="password"
+                placeholder="Repita a senha"
+                value={confirmar}
+                onChange={(e) => { setConfirmar(e.target.value); setErrors((p) => ({ ...p, confirmar: '' })) }}
+                className={`block w-full rounded-lg border px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${errors.confirmar ? 'border-red-400' : 'border-slate-300'}`}
               />
-              {errors.igreja && <p className="text-xs text-red-600">{errors.igreja}</p>}
+              {errors.confirmar && <p className="text-xs text-red-600">{errors.confirmar}</p>}
             </div>
 
             {/* Error geral */}
@@ -186,23 +169,32 @@ export default function PublicRegisterPage() {
               {status === 'loading' ? (
                 <>
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  Enviando...
+                  Criando conta...
                 </>
               ) : (
                 <>
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                   </svg>
-                  Enviar Cadastro
+                  Criar minha conta
                 </>
               )}
             </button>
+
+            {/* Link login */}
+            <p className="text-center text-sm text-slate-500">
+              Já tem conta?{' '}
+              <a href="/login" className="font-medium text-primary-600 hover:underline">
+                Fazer login
+              </a>
+            </p>
 
           </form>
         </div>
 
         <p className="mt-6 text-center text-xs text-primary-300">
-          Seus dados são armazenados com segurança e utilizados apenas para fins de contato ministerial.
+          Sistema de Cadastros — Pr. Glaucio Goulart
         </p>
       </div>
     </div>
